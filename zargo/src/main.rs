@@ -25,7 +25,7 @@ async fn main() {
     process::exit(match args.command.execute().await {
         Ok(()) => zinc_const::exit_code::SUCCESS,
         Err(error) => {
-            log::error!("{}", error);
+            log::error!("err:{}", error);
             zinc_const::exit_code::FAILURE
         }
     })

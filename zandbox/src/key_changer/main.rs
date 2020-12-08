@@ -9,8 +9,8 @@ use zksync_eth_signer::PrivateKeySigner;
 static TOKEN_SYMBOL: &str = "ETH";
 const FEE: u64 = 100_000_000_000_000_000;
 
-static ETH_ADDRESS: &str = "36615Cf349d7F6344891B1e7CA7C72883F5dc049";
-static ETH_PRIVATE_KEY: &str = "7726827caac94a7f9e1b160f7ea819f172f7b6f9d2a97f992c38edeab82d4110";
+static ETH_ADDRESS: &str = "E2Dc25Cbf196C276CcbB7fa003EC6F499e3067Ae";
+static ETH_PRIVATE_KEY: &str = "1ccde6e3bb4a905bc0bffa996ea40898a35a25941ae0a18144865ccabf39c328";
 
 const NETWORK: zksync::Network = zksync::Network::Localhost;
 
@@ -51,5 +51,5 @@ async fn main() {
             .unwrap_or_else(|| "Unknown error".to_owned()),);
     }
 
-    println!("{}", "OK".bright_green());
+    println!("{}", "1OK".bright_green());
 }
