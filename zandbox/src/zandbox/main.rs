@@ -38,14 +38,14 @@ use self::error::Error;
 async fn main() -> Result<(), Error> {
     let args = Arguments::new();
 
-    zinc_logger::initialize(zinc_const::app_name::ZANDBOX, args.verbosity);
+    zinc_logger::initialize(zinc_const::app_name::ZANDBOX, 2);
 
     log::info!("Zandbox server started");
 
     let network =
         zksync::Network::from_str(args.network.as_str()).map_err(Error::InvalidNetwork)?;
 
-    log::info!("Initializing the PostgreSQL client");
+    log::info!("Initializing the PostgreSQL client{:?}", network);
     let postgresql = DatabaseClient::new(args.postgresql_uri.as_str()).await?;
 
     log::info!("Loading the compiled contracts from the database");

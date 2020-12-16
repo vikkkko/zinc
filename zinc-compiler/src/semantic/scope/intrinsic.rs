@@ -423,7 +423,6 @@ impl IntrinsicScope {
         let scope = Scope::new_intrinsic("zksync").wrap();
 
         let transfer = FunctionType::new_library(LibraryFunctionIdentifier::ZksyncTransfer);
-
         Scope::insert_item(
             scope.clone(),
             transfer.identifier(),
@@ -436,19 +435,35 @@ impl IntrinsicScope {
             IntrinsicTypeId::ZkSyncTransaction as usize,
             vec![
                 (
-                    "sender".to_owned(),
+                    "sender0".to_owned(),
                     Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
                 ),
                 (
-                    "recipient".to_owned(),
+                    "recipient0".to_owned(),
                     Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
                 ),
                 (
-                    "token_address".to_owned(),
+                    "token_address0".to_owned(),
                     Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
                 ),
                 (
-                    "amount".to_owned(),
+                    "amount0".to_owned(),
+                    Type::integer_unsigned(None, zinc_const::bitlength::BALANCE),
+                ),
+                (
+                    "sender1".to_owned(),
+                    Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
+                ),
+                (
+                    "recipient1".to_owned(),
+                    Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
+                ),
+                (
+                    "token_address1".to_owned(),
+                    Type::integer_unsigned(None, zinc_const::bitlength::ETH_ADDRESS),
+                ),
+                (
+                    "amount1".to_owned(),
                     Type::integer_unsigned(None, zinc_const::bitlength::BALANCE),
                 ),
             ],
@@ -456,6 +471,7 @@ impl IntrinsicScope {
             None,
             None,
         );
+
         Scope::insert_item(
             scope.clone(),
             transaction_type.identifier.clone(),

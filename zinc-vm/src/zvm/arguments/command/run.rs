@@ -88,7 +88,7 @@ impl IExecutable for Command {
                 }
                 InputBuild::Contract {
                     arguments,
-                    msg: transaction,
+                    msg: transactions,
                     storage,
                 } => {
                     let method_name = self.method.ok_or(Error::MethodNameNotFound)?;
@@ -122,17 +122,28 @@ impl IExecutable for Command {
                         }
                         value => return Err(Error::InvalidContractStorageFormat { found: value }),
                     };
+                    
+                    let mut transaction_msgs: Vec<TransactionMsg> = Vec::new();
+                    for i in 0..transactions.as_array().unwrap().len() {
+                        let transaction_msg = TransactionMsg::try_from(&transactions.clone()[i])
+                            .map_err(|error| Error::InvalidTransaction {
+                                inner: error,
+                                found: transactions.clone(),
+                            })?;
+                        transaction_msgs.push(transaction_msg);
+                    }
 
                     let output = ContractFacade::new(contract).run::<Bn256>(ContractInput::new(
                         method_arguments,
                         BuildValue::Contract(storage_values),
                         method_name,
-                        TransactionMsg::try_from(&transaction).map_err(|error| {
-                            Error::InvalidTransaction {
-                                inner: error,
-                                found: transaction.clone(),
-                            }
-                        })?,
+                        transaction_msgs,
+                        // TransactionMsg::try_from(&transaction).map_err(|error| {
+                        //     Error::InvalidTransaction {
+                        //         inner: error,
+                        //         found: transaction.clone(),
+                        //     }
+                        // })?,
                     ))?;
 
                     let mut storage_values = Vec::with_capacity(storage_size);
@@ -151,7 +162,7 @@ impl IExecutable for Command {
 
                     let input_str = serde_json::to_string_pretty(&InputBuild::new_contract(
                         JsonValue::Array(storage_values),
-                        transaction,
+                        transactions,
                         arguments,
                     ))
                     .expect(zinc_const::panic::DATA_CONVERSION);

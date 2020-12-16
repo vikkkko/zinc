@@ -18,6 +18,7 @@ use structopt::StructOpt;
 use zksync::web3::types::H256;
 use zksync_eth_signer::PrivateKeySigner;
 use zksync_types::tx::PackedEthSignature;
+use zksync_types::Address;
 
 use zinc_manifest::Manifest;
 use zinc_manifest::ProjectType;
@@ -154,7 +155,11 @@ impl Command {
         let wallet = zksync::Wallet::new(zksync::Provider::new(network.into()), wallet_credentials)
             .await
             .map_err(Error::WalletInitialization)?;
+        
+        let mut transactions_call: Vec<zinc_zksync::Transaction> = Vec::new();
 
+
+        let mut transactions: Vec<zinc_zksync::Transaction> = Vec::new();
         let msg = input
             .inner
             .as_object()
@@ -162,13 +167,31 @@ impl Command {
             .get("msg")
             .cloned()
             .ok_or(Error::InvalidInputData)?;
+        let msg1 = input
+            .inner
+            .as_object()
+            .ok_or(Error::InvalidInputData)?
+            .get("msg1")
+            .cloned()
+            .ok_or(Error::InvalidInputData)?;
         let msg = TransactionMsg::try_from(&msg)
             .map_err(TransactionError::Parsing)
             .map_err(Error::Transaction)?;
-        let transaction = crate::transaction::try_into_zksync(msg.clone(), &wallet, None)
+        let msg1 = TransactionMsg::try_from(&msg1)
+            .map_err(TransactionError::Parsing)
+            .map_err(Error::Transaction)?;
+        let transaction0 = crate::transaction::try_into_zksync(msg.clone(), &wallet, None, 0)
             .await
             .map_err(Error::Transaction)?;
-
+        println!("transaction0:{:?}",transaction0);
+        transactions.push(transaction0);
+        if msg1.sender != Address::default() {
+            let transaction1 = crate::transaction::try_into_zksync(msg1.clone(), &wallet, None, 0)
+            .await
+            .map_err(Error::Transaction)?;
+            transactions.push(transaction1);
+        }
+        println!("transactions:{:?}",transactions);
         let http_client = HttpClient::new();
         let http_response = http_client
             .execute(
@@ -181,7 +204,7 @@ impl Command {
                         )
                         .expect(zinc_const::panic::DATA_CONVERSION),
                     )
-                    .json(&FeeRequestBody::new(arguments.clone(), transaction))
+                    .json(&FeeRequestBody::new(arguments.clone(), transactions))
                     .build()
                     .expect(zinc_const::panic::DATA_CONVERSION),
             )
@@ -198,20 +221,84 @@ impl Command {
                     .expect(zinc_const::panic::DATA_CONVERSION),
             )));
         }
-
         let response = http_response
             .json::<FeeResponseBody>()
             .await
             .expect(zinc_const::panic::DATA_CONVERSION);
         let contract_fee = response.fee;
-        let transaction = crate::transaction::try_into_zksync(
-            msg,
+        let transaction0 = crate::transaction::try_into_zksync(
+            msg.clone(),
             &wallet,
-            Some(zinc_zksync::num_compat_forward(contract_fee)),
+            Some(zinc_zksync::num_compat_forward(contract_fee.clone())),
+            0,
         )
         .await
         .map_err(Error::Transaction)?;
+        println!("transaction0:{:?}",transaction0);
+        println!("fee:{}", contract_fee.clone().to_string());
+        transactions_call.push(transaction0);
 
+        if msg1.sender != Address::default(){
+            let mut transactions: Vec<zinc_zksync::Transaction> = Vec::new();
+            let transaction0 = crate::transaction::try_into_zksync(msg.clone(), &wallet, None, 0)
+            .await
+            .map_err(Error::Transaction)?;
+            let transaction1 = crate::transaction::try_into_zksync(msg1.clone(), &wallet, None, 0)
+            .await
+            .map_err(Error::Transaction)?;
+            println!("transaction1:{:?}",transaction1);
+            transactions.push(transaction1);
+            transactions.push(transaction0);
+            println!("transactions:{:?}",transactions);
+            let http_client = HttpClient::new();
+            let http_response = http_client
+                .execute(
+                    http_client
+                        .request(
+                            Method::PUT,
+                            Url::parse_with_params(
+                                format!("{}{}", url, zinc_const::zandbox::CONTRACT_FEE_URL).as_str(),
+                                FeeRequestQuery::new(address, self.method.clone(), network.into()),
+                            )
+                            .expect(zinc_const::panic::DATA_CONVERSION),
+                        )
+                        .json(&FeeRequestBody::new(arguments.clone(), transactions))
+                        .build()
+                        .expect(zinc_const::panic::DATA_CONVERSION),
+                )
+                .await
+                .map_err(Error::HttpRequest)?;
+    
+            if !http_response.status().is_success() {
+                return Err(Error::ActionFailed(format!(
+                    "HTTP error ({}) {}",
+                    http_response.status(),
+                    http_response
+                        .text()
+                        .await
+                        .expect(zinc_const::panic::DATA_CONVERSION),
+                )));
+            }
+            let response = http_response
+                .json::<FeeResponseBody>()
+                .await
+                .expect(zinc_const::panic::DATA_CONVERSION);
+            let contract_fee = response.fee;
+            let transaction1 = crate::transaction::try_into_zksync(
+                msg1.clone(),
+                &wallet,
+                Some(zinc_zksync::num_compat_forward(
+                    contract_fee.clone(),
+                )),
+                1,
+            )
+            .await
+            .map_err(Error::Transaction)?;
+            println!("transaction1:{:?}",transaction1);
+            transactions_call.push(transaction1);
+        }
+
+        println!("transactions_call:{:?}", &transactions_call);
         let http_client = HttpClient::new();
         let http_response = http_client
             .execute(
@@ -224,7 +311,7 @@ impl Command {
                         )
                         .expect(zinc_const::panic::DATA_CONVERSION),
                     )
-                    .json(&CallRequestBody::new(arguments, transaction))
+                    .json(&CallRequestBody::new(arguments, transactions_call))
                     .build()
                     .expect(zinc_const::panic::DATA_CONVERSION),
             )

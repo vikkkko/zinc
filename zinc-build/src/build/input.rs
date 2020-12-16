@@ -11,7 +11,7 @@ use serde_json::Value as JsonValue;
 ///
 /// The Zinc build input file representation.
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Input {
     /// The circuit byte representation.

@@ -18,7 +18,7 @@ use zksync_eth_signer::PrivateKeySigner;
 use zinc_build::Value as BuildValue;
 use zinc_vm::Bn256;
 use zinc_vm::ContractInput;
-use zinc_zksync::TransactionMsg;
+// use zinc_zksync::TransactionMsg;
 
 use crate::database::model::field::select::Input as FieldSelectInput;
 use crate::response::Response;
@@ -137,7 +137,8 @@ pub async fn handle(
             input_value,
             storage.into_build(),
             method_name,
-            TransactionMsg::default(),
+            // TransactionMsg::default(),
+            Vec::new(),
         ))
     })
     .await

@@ -27,4 +27,4 @@ pub static FIELD_NAME_BALANCES: &str = "balances";
 pub static TRANSACTION_VARIABLE_NAME: &str = "msg";
 
 /// The implicit transaction variable size.
-pub const TRANSACTION_SIZE: usize = 4;
+pub const TRANSACTION_SIZE: usize = 8;

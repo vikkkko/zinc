@@ -185,7 +185,8 @@ impl IRunnable for Runner {
                             case.method.unwrap_or_else(|| {
                                 zinc_const::source::FUNCTION_MAIN_IDENTIFIER.to_owned()
                             }),
-                            TransactionMsg::default(),
+                            // TransactionMsg::default(),
+                            Vec::new(),
                         ),
                     );
 

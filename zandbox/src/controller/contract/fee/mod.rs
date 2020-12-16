@@ -21,6 +21,8 @@ use zksync_types::TxFeeTypes;
 use zinc_build::Value as BuildValue;
 use zinc_vm::Bn256;
 use zinc_vm::ContractInput;
+// use zinc_zksync::Transaction;
+use zinc_zksync::TransactionMsg;
 
 use crate::database::model::field::select::Input as FieldSelectInput;
 use crate::response::Response;
@@ -58,8 +60,7 @@ pub async fn handle(
         .expect(zinc_const::panic::SYNCHRONIZATION)
         .postgresql
         .clone();
-
-    log::debug!(
+    log::info!(
         "Calculating the fee for method `{}` of contract {}",
         query.method,
         serde_json::to_string(&query.address).expect(zinc_const::panic::DATA_CONVERSION),
@@ -118,14 +119,22 @@ pub async fn handle(
     log::debug!("Running the contract method on the virtual machine");
     let method = query.method;
     let contract_build = contract.build;
-    let transaction = (&body.transaction).try_to_msg(&wallet)?;
     let vm_time = std::time::Instant::now();
+    log::debug!("input_value:{:?}", input_value);
+    let mut transaction_msgs: Vec<TransactionMsg> = Vec::new();
+
+    for transaction in (&body.transaction).iter() {
+        let transaction_msg = transaction.try_to_msg(&wallet)?;
+        log::debug!("transactionMsg:{:?}", transaction_msg);
+        transaction_msgs.push(transaction_msg);
+    }
+
     let output = async_std::task::spawn_blocking(move || {
         zinc_vm::ContractFacade::new(contract_build).run::<Bn256>(ContractInput::new(
             input_value,
             storage.into_build(),
             method,
-            transaction,
+            transaction_msgs,
         ))
     })
     .await
@@ -134,7 +143,7 @@ pub async fn handle(
 
     log::debug!("Calculating the fee for the method transfers");
     let mut fee = BigUint::zero();
-    let token = match body.transaction.tx {
+    let token = match body.transaction[0].tx {
         ZkSyncTx::Transfer(ref transfer) => wallet
             .tokens
             .resolve(transfer.token.into())

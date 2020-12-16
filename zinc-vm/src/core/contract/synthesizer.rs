@@ -29,7 +29,7 @@ pub struct Synthesizer<'a, E: IEngine, S: IMerkleTree<E>> {
     pub bytecode: BytecodeContract,
     pub method: ContractMethod,
     pub storage: S,
-    pub transaction: TransactionMsg,
+    pub transactions: Vec<TransactionMsg>,
 
     pub _pd: PhantomData<E>,
 }
@@ -49,7 +49,7 @@ where
             DedupCS::new(LoggingCS::new(cs)),
             storage,
             self.method.name,
-            self.transaction,
+            self.transactions,
         );
 
         *self.output = Some(contract.run(

@@ -16,7 +16,7 @@ use zinc_build::Application as BuildApplication;
 use zinc_build::Value as BuildValue;
 use zinc_vm::Bn256;
 use zinc_vm::ContractInput;
-use zinc_zksync::TransactionMsg;
+// use zinc_zksync::TransactionMsg;
 
 use zksync::web3::types::Address;
 use zksync::web3::types::H256;
@@ -87,7 +87,8 @@ pub async fn handle(
             input_value,
             storage,
             zinc_const::contract::CONSTRUCTOR_NAME.to_owned(),
-            TransactionMsg::default(),
+            // TransactionMsg::default(),
+            Vec::new(),
         ))
     })
     .await

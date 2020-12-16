@@ -55,7 +55,7 @@ where
 
     storage: StorageGadget<E, S, H>,
     method_name: String,
-    transaction: TransactionMsg,
+    transactions: Vec<TransactionMsg>,
 
     pub(crate) location: Location,
 }
@@ -71,7 +71,7 @@ where
         cs: CS,
         storage: StorageGadget<E, S, H>,
         method_name: String,
-        transaction: TransactionMsg,
+        transactions: Vec<TransactionMsg>,
     ) -> Self {
         Self {
             counter: NamespaceCounter::new(cs),
@@ -80,7 +80,7 @@ where
 
             storage,
             method_name,
-            transaction,
+            transactions,
 
             location: Location::new(),
         }
@@ -122,7 +122,6 @@ where
             log::error!("{}\nat {}", error, self.location.to_string().blue());
             return Err(error);
         }
-
         self.init_storage()?;
 
         let mut step = 0;
@@ -144,6 +143,7 @@ where
             );
 
             self.execution_state.instruction_counter += 1;
+            log::debug!("instruction,{:?}",instruction);
             if let Err(error) = instruction.execute(self).and(check_cs(&self.counter.cs)) {
                 log::error!("{}\nat {}", error, self.location.to_string().blue());
                 return Err(error);
@@ -258,6 +258,7 @@ where
 
     fn load(&mut self, address: usize) -> Result<Cell<E>, RuntimeError> {
         let frame_start = self.top_frame()?.stack_frame_start;
+        log::debug!("address:{:?}-------frame_start:{:?}",address,frame_start);
         self.execution_state.data_stack.get(frame_start + address)
     }
 
@@ -267,6 +268,7 @@ where
             std::cmp::max(frame.stack_frame_end, frame.stack_frame_start + address + 1);
 
         let frame_start = frame.stack_frame_start;
+        log::debug!("frame_start:{:?}-------address:{:?}",frame_start,address);
 
         self.execution_state
             .data_stack
@@ -329,76 +331,92 @@ where
         self.execution_state
             .frames_stack
             .push(Frame::new(offset, self.execution_state.instruction_counter));
+        let tran_len = self.transactions.len();    
+        let mut transaction_field_iter = 0..4*tran_len;
 
-        let mut transaction_field_iter = 0..4;
-
-        let sender: [u8; zinc_const::size::ETH_ADDRESS] = self.transaction.sender.into();
-        let sender = gadgets::witness::allocate(
-            self.counter.next(),
-            Some(&BigInt::from_bytes_be(
-                Sign::Plus,
-                sender.to_vec().as_slice(),
-            )),
-            ScalarType::Integer(IntegerType::ETH_ADDRESS),
-        )?;
-        self.store(
-            transaction_field_iter
-                .next()
-                .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
-            Cell::Value(sender),
-        )?;
-
-        let recipient: [u8; zinc_const::size::ETH_ADDRESS] = self.transaction.recipient.into();
-        let recipient = gadgets::witness::allocate(
-            self.counter.next(),
-            Some(&BigInt::from_bytes_be(
-                Sign::Plus,
-                recipient.to_vec().as_slice(),
-            )),
-            ScalarType::Integer(IntegerType::ETH_ADDRESS),
-        )?;
-        self.store(
-            transaction_field_iter
-                .next()
-                .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
-            Cell::Value(recipient),
-        )?;
-
-        let token_address: [u8; zinc_const::size::ETH_ADDRESS] =
-            self.transaction.token_address.into();
-        let token_address = gadgets::witness::allocate(
-            self.counter.next(),
-            Some(&BigInt::from_bytes_be(
-                Sign::Plus,
-                token_address.to_vec().as_slice(),
-            )),
-            ScalarType::Integer(IntegerType::ETH_ADDRESS),
-        )?;
-        self.store(
-            transaction_field_iter
-                .next()
-                .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
-            Cell::Value(token_address),
-        )?;
-
-        let amount = gadgets::witness::allocate(
-            self.counter.next(),
-            Some(
-                &zinc_zksync::num_compat_forward(self.transaction.amount.to_owned())
-                    .to_bigint()
-                    .expect(zinc_const::panic::DATA_CONVERSION),
-            ),
-            ScalarType::Integer(IntegerType::BALANCE),
-        )?;
-        self.store(
-            transaction_field_iter
-                .next()
-                .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
-            Cell::Value(amount),
-        )?;
+        for i in 0..self.transactions.len() {
+            let sender : [u8; zinc_const::size::ETH_ADDRESS] = (&self.transactions[i]).sender.into();
+            let sender = gadgets::witness::allocate(
+                self.counter.next(),
+                Some(&BigInt::from_bytes_be(
+                    Sign::Plus,
+                    sender.to_vec().as_slice(),
+                )),
+                ScalarType::Integer(IntegerType::ETH_ADDRESS),
+            )?;
+            log::debug!("sender========================={:?}", sender.clone());
+    
+            self.store(
+                transaction_field_iter
+                    .next()
+                    .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
+                Cell::Value(sender),
+            )?;
+    
+            let recipient: [u8; zinc_const::size::ETH_ADDRESS] =
+                (&self.transactions[i]).recipient.into();
+            let recipient = gadgets::witness::allocate(
+                self.counter.next(),
+                Some(&BigInt::from_bytes_be(
+                    Sign::Plus,
+                    recipient.to_vec().as_slice(),
+                )),
+                ScalarType::Integer(IntegerType::ETH_ADDRESS),
+            )?;
+            log::debug!("recipient========================={:?}", recipient.clone());
+    
+            self.store(
+                transaction_field_iter
+                    .next()
+                    .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
+                Cell::Value(recipient),
+            )?;
+    
+            let token_address: [u8; zinc_const::size::ETH_ADDRESS] =
+                (&self.transactions[i]).token_address.into();
+            let token_address = gadgets::witness::allocate(
+                self.counter.next(),
+                Some(&BigInt::from_bytes_be(
+                    Sign::Plus,
+                    token_address.to_vec().as_slice(),
+                )),
+                ScalarType::Integer(IntegerType::ETH_ADDRESS),
+            )?;
+    
+            log::debug!("token_address========================={:?}", token_address.clone());
+    
+            self.store(
+                transaction_field_iter
+                    .next()
+                    .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
+                Cell::Value(token_address),
+            )?;
+    
+            let amount = gadgets::witness::allocate(
+                self.counter.next(),
+                Some(
+                    &zinc_zksync::num_compat_forward((&self.transactions[i]).amount.to_owned())
+                        .to_bigint()
+                        .expect(zinc_const::panic::DATA_CONVERSION),
+                ),
+                ScalarType::Integer(IntegerType::BALANCE),
+            )?;
+    
+            log::debug!("amount========================={:?}", amount.clone());
+    
+            self.store(
+                transaction_field_iter
+                    .next()
+                    .expect(zinc_const::panic::VALUE_ALWAYS_EXISTS),
+                Cell::Value(amount),
+            )?;
+        }
+        
+        log::debug!("inputs_count========================={:?}", inputs_count);
 
         for i in 0..inputs_count {
             let arg = self.pop()?;
+            log::debug!("arg========================={:?}", arg);
             self.store(
                 zinc_const::contract::TRANSACTION_SIZE + inputs_count - i - 1,
                 arg,

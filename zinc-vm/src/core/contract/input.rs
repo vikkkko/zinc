@@ -16,7 +16,7 @@ pub struct Input {
     /// The contract method name which is called.
     pub method_name: String,
     /// The contract input transaction.
-    pub transaction: TransactionMsg,
+    pub transactions: Vec<TransactionMsg>,
 }
 
 impl Input {
@@ -27,13 +27,16 @@ impl Input {
         arguments: BuildValue,
         storage: BuildValue,
         method_name: String,
-        transaction: TransactionMsg,
+        mut transactions: Vec<TransactionMsg>,
     ) -> Self {
+        if transactions.len() == 1{
+            transactions.push(TransactionMsg::default())
+        }
         Self {
             arguments,
             storage,
             method_name,
-            transaction,
+            transactions,
         }
     }
 }

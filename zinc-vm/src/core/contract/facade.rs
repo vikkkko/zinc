@@ -19,7 +19,7 @@ use zinc_build::ContractFieldValue;
 use zinc_build::Type as BuildType;
 use zinc_build::Value as BuildValue;
 use zinc_const::UnitTestExitCode;
-use zinc_zksync::TransactionMsg;
+// use zinc_zksync::TransactionMsg;
 
 use crate::constraint_systems::constant::Constant as ConstantCS;
 use crate::core::contract::input::Input as ContractInput;
@@ -51,7 +51,10 @@ impl Facade {
 
     pub fn run<E: IEngine>(self, input: ContractInput) -> Result<ContractOutput, RuntimeError> {
         let mut cs = ConstantCS {};
-
+        log::debug!("input.transactions:{:?}",input.transactions);
+        log::debug!("input.arguments:{:?}",input.arguments);
+        log::debug!("input.storage:{:?}",input.storage);
+        log::debug!("input.method_name:{:?}",input.method_name);
         let method = self
             .inner
             .methods
@@ -69,6 +72,8 @@ impl Facade {
         };
 
         let storage_fields = self.inner.storage.clone();
+        log::debug!("storage_fields:{:?}",storage_fields);
+
         let mut storage_types = Vec::with_capacity(self.inner.storage.len());
         for field in self.inner.storage.iter() {
             storage_types.push(field.r#type.to_owned());
@@ -117,7 +122,7 @@ impl Facade {
             StorageGadget::<_, _, Sha256Hasher>::new(cs.namespace(|| "storage"), storage)?;
 
         let mut state =
-            ContractState::new(cs, storage_gadget, input.method_name, input.transaction);
+            ContractState::new(cs, storage_gadget, input.method_name, input.transactions);
 
         let mut num_constraints = 0;
         let result = state.run(
@@ -221,7 +226,8 @@ impl Facade {
                 StorageGadget::<_, _, Sha256Hasher>::new(cs.namespace(|| "storage"), storage)?;
 
             let mut state =
-                ContractState::new(cs, storage_gadget, name.clone(), TransactionMsg::default());
+                //ContractState::new(cs, storage_gadget, name.clone(), TransactionMsg::default());
+                ContractState::new(cs, storage_gadget, name.clone(), Vec::new());
 
             let result = state.run(
                 self.inner.clone(),
@@ -285,7 +291,7 @@ impl Facade {
             bytecode: self.inner,
             method,
             storage,
-            transaction: TransactionMsg::default(),
+            transactions: Vec::new(),
 
             _pd: PhantomData,
         };
@@ -373,7 +379,7 @@ impl Facade {
             bytecode: self.inner,
             method,
             storage,
-            transaction: input.transaction,
+            transactions: input.transactions,
 
             _pd: PhantomData,
         };

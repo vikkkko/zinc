@@ -24,6 +24,7 @@ use zinc_build::Value as BuildValue;
 use zinc_vm::Bn256;
 use zinc_vm::ContractInput;
 use zinc_zksync::Transaction;
+use zinc_zksync::TransactionMsg;
 
 use crate::database::model::field::select::Input as FieldSelectInput;
 use crate::response::Response;
@@ -57,7 +58,7 @@ pub async fn handle(
 ) -> crate::Result<JsonValue, Error> {
     let query = query.into_inner();
     let body = body.into_inner();
-
+    log::debug!("body:{:?}", body);
     let postgresql = app_data
         .read()
         .expect(zinc_const::panic::SYNCHRONIZATION)
@@ -123,14 +124,22 @@ pub async fn handle(
     log::debug!("Running the contract method on the virtual machine");
     let method = query.method;
     let contract_build = contract.build;
-    let transaction = (&body.transaction).try_to_msg(&wallet)?;
     let vm_time = std::time::Instant::now();
+    log::debug!("input_value:{:?}", input_value);
+    let mut transaction_msgs: Vec<TransactionMsg> = Vec::new();
+
+    for transaction in (&body.transaction).iter() {
+        let transaction_msg = transaction.try_to_msg(&wallet)?;
+        log::debug!("transactionMsg:{:?}", transaction_msg);
+        transaction_msgs.push(transaction_msg);
+    }
+
     let output = async_std::task::spawn_blocking(move || {
         zinc_vm::ContractFacade::new(contract_build).run::<Bn256>(ContractInput::new(
             input_value,
             storage.into_build(),
             method,
-            transaction,
+            transaction_msgs,
         ))
     })
     .await
@@ -141,30 +150,32 @@ pub async fn handle(
     let storage = Storage::from_build(output.storage).into_database_update(account_id);
 
     log::debug!("Building the transaction list");
-    let mut transactions = Vec::with_capacity(1 + output.transfers.len());
-    if let ZkSyncTx::Transfer(ref transfer) = body.transaction.tx {
-        let token = wallet
-            .tokens
-            .resolve(transfer.token.into())
-            .ok_or_else(|| Error::TokenNotFound(transfer.token.to_string()))?;
+    let mut transactions = body.transaction;
+    // if let ZkSyncTx::Transfer(ref transfer) = transactions[0].tx {
+    //     log::debug!("transfer:{:?}", transfer);
+    //     let token = wallet
+    //         .tokens
+    //         .resolve(transfer.token.into())
+    //         .ok_or_else(|| Error::TokenNotFound(transfer.token.to_string()))?;
 
-        log::debug!(
-            "Sending {} {} from {} to {} with total batch fee {} {}",
-            zksync_utils::format_units(&transfer.amount, token.decimals),
-            token.symbol,
-            serde_json::to_string(&transfer.from).expect(zinc_const::panic::DATA_CONVERSION),
-            serde_json::to_string(&transfer.to).expect(zinc_const::panic::DATA_CONVERSION),
-            zksync_utils::format_units(&transfer.fee, token.decimals),
-            token.symbol,
-        );
-    }
-    transactions.push(body.transaction);
+    //     log::debug!(
+    //         "Sending {} {} from {} to {} with total batch fee {} {}",
+    //         zksync_utils::format_units(&transfer.amount, token.decimals),
+    //         token.symbol,
+    //         serde_json::to_string(&transfer.from).expect(zinc_const::panic::DATA_CONVERSION),
+    //         serde_json::to_string(&transfer.to).expect(zinc_const::panic::DATA_CONVERSION),
+    //         zksync_utils::format_units(&transfer.fee, token.decimals),
+    //         token.symbol,
+    //     );
+    // }
+
     let mut nonce = wallet
         .provider
         .account_info(query.address)
         .await?
         .committed
         .nonce;
+    log::debug!("output:{:?}", output.transfers);
     for transfer in output.transfers.into_iter() {
         let recipient = transfer.recipient.into();
         let token = wallet
@@ -206,8 +217,9 @@ pub async fn handle(
     }
 
     log::debug!(
-        "Sending the transactions to zkSync on network `{}`",
-        query.network
+        "Sending the transactions to zkSync on network `{}`,transactions: {:?}",
+        query.network,
+        &transactions
     );
     let handles: Vec<SyncTransactionHandle> = wallet
         .provider

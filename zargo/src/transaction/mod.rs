@@ -67,6 +67,7 @@ pub async fn try_into_zksync(
     transaction: TransactionMsg,
     wallet: &zksync::Wallet<PrivateKeySigner>,
     contract_fee: Option<BigUint>,
+    nonce_adjust: u32,
 ) -> Result<zinc_zksync::Transaction, Error> {
     let token = wallet
         .tokens
@@ -97,7 +98,13 @@ pub async fn try_into_zksync(
 
     let (transfer, signature) = wallet
         .signer
-        .sign_transfer(token, amount, fee, transaction.recipient, nonce)
+        .sign_transfer(
+            token,
+            amount,
+            fee,
+            transaction.recipient,
+            nonce + nonce_adjust,
+        )
         .await
         .map_err(Error::TransactionSigning)?;
     let signature = signature.expect(zinc_const::panic::DATA_CONVERSION);

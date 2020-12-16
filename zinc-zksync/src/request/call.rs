@@ -59,6 +59,7 @@ impl IntoIterator for Query {
     }
 }
 
+
 ///
 /// The contract resource `call` POST request body.
 ///
@@ -67,14 +68,14 @@ pub struct Body {
     /// The JSON method input.
     pub arguments: JsonValue,
     /// The signed transaction which must be sent directly to zkSync.
-    pub transaction: Transaction,
+    pub transaction: Vec<Transaction>,
 }
 
 impl Body {
     ///
     /// A shortcut constructor.
     ///
-    pub fn new(arguments: JsonValue, transaction: Transaction) -> Self {
+    pub fn new(arguments: JsonValue, transaction: Vec<Transaction>) -> Self {
         Self {
             arguments,
             transaction,

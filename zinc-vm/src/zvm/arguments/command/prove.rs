@@ -102,7 +102,7 @@ impl IExecutable for Command {
                 }
                 InputBuild::Contract {
                     arguments,
-                    msg: transaction,
+                    msg: transactions,
                     storage,
                 } => {
                     let method_name = self.method.ok_or(Error::MethodNameNotFound)?;
@@ -135,6 +135,16 @@ impl IExecutable for Command {
                         }
                         value => return Err(Error::InvalidContractStorageFormat { found: value }),
                     };
+                    
+                    let mut transaction_msgs: Vec<TransactionMsg> = Vec::new();
+                    for i in 0..transactions.as_array().unwrap().len() {
+                        let transaction_msg = TransactionMsg::try_from(&transactions.clone()[i])
+                            .map_err(|error| Error::InvalidTransaction {
+                                inner: error,
+                                found: transactions.clone(),
+                            })?;
+                        transaction_msgs.push(transaction_msg);
+                    }
 
                     let (_output, proof) = ContractFacade::new(contract).prove::<Bn256>(
                         params,
@@ -142,12 +152,13 @@ impl IExecutable for Command {
                             method_arguments,
                             BuildValue::Contract(storage_values),
                             method_name,
-                            TransactionMsg::try_from(&transaction).map_err(|error| {
-                                Error::InvalidTransaction {
-                                    inner: error,
-                                    found: transaction,
-                                }
-                            })?,
+                            transaction_msgs,
+                            //     TransactionMsg::try_from(&transaction).map_err(|error| {
+                            //         Error::InvalidTransaction {
+                            //             inner: error,
+                            //             found: transaction,
+                            //         }
+                            //     })?,
                         ),
                     )?;
 
