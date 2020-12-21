@@ -21,7 +21,9 @@ impl Network {
         match self.inner {
             zksync::Network::Rinkeby => Ok("https://rinkeby2-zandbox.zksync.dev".to_owned()),
             zksync::Network::Localhost => Ok("http://localhost:4001".to_owned()),
-            zksync::Network::Ropsten => Ok("http://47.241.13.124:4001".to_owned()),
+            zksync::Network::RopstenD => Ok("http://47.241.13.124:4001".to_owned()),
+            zksync::Network::RopstenT => Ok("http://161.117.187.126:4001".to_owned()),
+            zksync::Network::Ropsten => Ok("http://161.117.187.126:4001".to_owned()),
             another => Err(another),
         }
     }

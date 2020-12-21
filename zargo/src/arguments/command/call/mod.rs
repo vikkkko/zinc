@@ -155,9 +155,8 @@ impl Command {
         let wallet = zksync::Wallet::new(zksync::Provider::new(network.into()), wallet_credentials)
             .await
             .map_err(Error::WalletInitialization)?;
-        
-        let mut transactions_call: Vec<zinc_zksync::Transaction> = Vec::new();
 
+        let mut transactions_call: Vec<zinc_zksync::Transaction> = Vec::new();
 
         let mut transactions: Vec<zinc_zksync::Transaction> = Vec::new();
         let msg = input
@@ -183,15 +182,15 @@ impl Command {
         let transaction0 = crate::transaction::try_into_zksync(msg.clone(), &wallet, None, 0)
             .await
             .map_err(Error::Transaction)?;
-        println!("transaction0:{:?}",transaction0);
+        println!("transaction0:{:?}", transaction0);
         transactions.push(transaction0);
         if msg1.sender != Address::default() {
             let transaction1 = crate::transaction::try_into_zksync(msg1.clone(), &wallet, None, 0)
-            .await
-            .map_err(Error::Transaction)?;
+                .await
+                .map_err(Error::Transaction)?;
             transactions.push(transaction1);
         }
-        println!("transactions:{:?}",transactions);
+        println!("transactions:{:?}", transactions);
         let http_client = HttpClient::new();
         let http_response = http_client
             .execute(
@@ -234,22 +233,22 @@ impl Command {
         )
         .await
         .map_err(Error::Transaction)?;
-        println!("transaction0:{:?}",transaction0);
-        println!("fee:{}", contract_fee.clone().to_string());
+        println!("transaction0:{:?}", transaction0);
+        println!("========>contract_fee00000:{}", contract_fee.clone().to_string());
         transactions_call.push(transaction0);
 
-        if msg1.sender != Address::default(){
+        if msg1.sender != Address::default() {
             let mut transactions: Vec<zinc_zksync::Transaction> = Vec::new();
             let transaction0 = crate::transaction::try_into_zksync(msg.clone(), &wallet, None, 0)
-            .await
-            .map_err(Error::Transaction)?;
+                .await
+                .map_err(Error::Transaction)?;
             let transaction1 = crate::transaction::try_into_zksync(msg1.clone(), &wallet, None, 0)
-            .await
-            .map_err(Error::Transaction)?;
-            println!("transaction1:{:?}",transaction1);
+                .await
+                .map_err(Error::Transaction)?;
+            println!("transaction1:{:?}", transaction1);
             transactions.push(transaction1);
             transactions.push(transaction0);
-            println!("transactions:{:?}",transactions);
+            println!("transactions:{:?}", transactions);
             let http_client = HttpClient::new();
             let http_response = http_client
                 .execute(
@@ -257,7 +256,8 @@ impl Command {
                         .request(
                             Method::PUT,
                             Url::parse_with_params(
-                                format!("{}{}", url, zinc_const::zandbox::CONTRACT_FEE_URL).as_str(),
+                                format!("{}{}", url, zinc_const::zandbox::CONTRACT_FEE_URL)
+                                    .as_str(),
                                 FeeRequestQuery::new(address, self.method.clone(), network.into()),
                             )
                             .expect(zinc_const::panic::DATA_CONVERSION),
@@ -268,7 +268,7 @@ impl Command {
                 )
                 .await
                 .map_err(Error::HttpRequest)?;
-    
+
             if !http_response.status().is_success() {
                 return Err(Error::ActionFailed(format!(
                     "HTTP error ({}) {}",
@@ -287,14 +287,13 @@ impl Command {
             let transaction1 = crate::transaction::try_into_zksync(
                 msg1.clone(),
                 &wallet,
-                Some(zinc_zksync::num_compat_forward(
-                    contract_fee.clone(),
-                )),
+                Some(zinc_zksync::num_compat_forward(contract_fee.clone())),
                 1,
             )
             .await
             .map_err(Error::Transaction)?;
-            println!("transaction1:{:?}",transaction1);
+            println!("transaction1:{:?}", transaction1);
+            println!("========>contract_fee11111:{}", contract_fee.clone().to_string());
             transactions_call.push(transaction1);
         }
 

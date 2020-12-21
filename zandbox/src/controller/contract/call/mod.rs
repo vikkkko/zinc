@@ -197,11 +197,12 @@ pub async fn handle(
         let fee = BigUint::zero();
 
         log::debug!(
-            "Sending {} {} from {} to {}",
+            "Sending {} {} from {} to {} fee {}",
             zksync_utils::format_units(&amount, token.decimals),
             token.symbol,
             serde_json::to_string(&query.address).expect(zinc_const::panic::DATA_CONVERSION),
             serde_json::to_string(&recipient).expect(zinc_const::panic::DATA_CONVERSION),
+            fee.to_string(),
         );
 
         let (transfer, signature) = wallet
